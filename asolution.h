@@ -9,8 +9,12 @@ class ASolution
 public:
     //ASolution();
 
-protected:
     virtual void mutate() = 0;
+    virtual void draw() const = 0;
+
+    // figure the specifiers
+    virtual double fitness(const cv::Mat& original) const = 0;
+protected:
 };
 
 #endif // ASOLUTION_H

@@ -8,23 +8,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     ui->setupUi(this);
 
     // Image Processing
-    original = cv::imread("/home/pupof/Pictures/google-earth-view-2433.jpg", cv::IMREAD_GRAYSCALE);
-    cv::cvtColor(original, original, cv::COLOR_GRAY2RGB); // or gray2rgb
-    img = cv::Mat::zeros(original.rows, original.cols, CV_8UC3);
+    original_full_resolution = cv::imread("/home/pupof/Pictures/lower_right_circle.jpg", cv::IMREAD_GRAYSCALE);
+    cv::cvtColor(original_full_resolution, original_resized, cv::COLOR_GRAY2RGB);
 
-    // Set up Mat to be displayed
-    cv::Mat resized_img;
-    cv::resize(original, resized_img, cv::Size(ui->left_label->width(), ui->left_label->height()));
-    imgq = QImage(resized_img.data, resized_img.cols, resized_img.rows, resized_img.cols*3, QImage::Format_RGB888);
-    // Display Mat as a Label
-    ui->right_label->setPixmap(QPixmap::fromImage(imgq));
+    /* Set up Mat to be displayed */
+    // should resize to some internal resoultion for computation
+    cv::resize(original_resized, original_resized, cv::Size(ui->left_label->width(), ui->left_label->height()));
+    imgq_right = QImage(original_resized.data, original_resized.cols,
+        original_resized.rows, original_resized.cols*3, QImage::Format_RGB888);
+    ui->right_label->setPixmap(QPixmap::fromImage(imgq_right));
 
     /* -- Ellipse Solutions. Init -- */
-    //population.populate(img);
+    blank_canvas = cv::Mat::zeros(original_resized.rows, original_resized.cols, CV_8UC3);
+    EllipsePopulation<100, 50> pop(original_resized.clone()); // mutates?
+    population = pop;
 
+    // replace with concurrency
+    // HOW TO RUN COMPUTATION?
+    //  * time for one mutation?
+    //  * stack drawings and constantly compute
     QTimer* timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this, SLOT(temp_func())); // replace with concurrency
-    timer->start(80);
+    connect(timer, SIGNAL(timeout()), this, SLOT(temp_func()));
+    timer->start(1);
 }
 
 MainWindow::~MainWindow()
@@ -34,56 +39,44 @@ MainWindow::~MainWindow()
 
 // for deprecation
 void MainWindow::temp_func() {
-    // faster with pointers
-    cv::Mat copy_img{img};
-    /*
-    for (int i = 0; i < ellipse_array.size(); ++i) {
-        if (randint(0, 100) < 50) {
-            // mutate + draw on img
-            std::array<uint16_t, 5> _temp{ellipse_array[i]}; // should copy array
-            _temp[0] += 20;
-            _temp[1] -= 20;
-            _temp[2] += 10;
-            _temp[3] -= 10;
-            ellipse_array[i] = _temp;
-        }
-        cv::ellipse(copy_img,
-            cv::Point(ellipse_array[i][0], ellipse_array[i][1]),
-            cv::Size(ellipse_array[i][2], ellipse_array[i][3]),
-            ellipse_array[i][4], 0, 360,
-            cv::Scalar(ellipse_array[i][4]));
+    population.selection(original_resized);
+// Calculate (& Display) Statistics
+    ui->acc_lbl->setText(QString::number(population.population[population.population.size() - 1].fitness(original_resized), 'f', 5));
+//
+    blank_canvas = population.draw_best();
 
-    }
-    */
-    /* // This is fine
-    Ellipse e(img);
-    e.draw(img);
-    */
-    // Is this?
-    EllipseSln<1> sln(img);
-    for (auto e: sln.elements) e.draw(img);
-
+/*  --  Separate logic  --  */
     // Display Evolving Picture
-    cv::Mat resized_img;
-    cv::resize(copy_img, resized_img, cv::Size(ui->left_label->width(), ui->left_label->height()));
-    imgq = QImage(resized_img.data, resized_img.cols, resized_img.rows, resized_img.cols*3, QImage::Format_Grayscale8);
-    ui->left_label->setPixmap(QPixmap::fromImage(imgq));
-    //this->repaint();
+    imgq_left = QImage(blank_canvas.data, blank_canvas.cols,
+                       blank_canvas.rows, blank_canvas.cols,  // bytesperline
+                       QImage::Format_Grayscale8);
+    ui->left_label->setPixmap(QPixmap::fromImage(imgq_left));
+
+}
+
+void MainWindow::test_func() {
+    EllipseSln<5> sln(blank_canvas);
+    sln.draw();
+    sln.fitness(original_resized);
+    blank_canvas = sln._image;
+
+    std::cout << sln.fitness(original_resized) << std::endl;
+
+
+
+
+
+    imgq_left = QImage(blank_canvas.data, blank_canvas.cols,
+                       blank_canvas.rows, blank_canvas.cols,  // bytesperline
+                       QImage::Format_Grayscale8);
+    blank_canvas = sln._temp;
+
+    ui->left_label->setPixmap(QPixmap::fromImage(imgq_left));
 
     // Calculate (& Display) Statistics
-    ui->acc_lbl->setText(QString::number(MSE(copy_img, original), 'f', 2));
+    ui->acc_lbl->setText(QString::number(sln.fitness(original_resized), 'f', 5));
 }
 
-double MainWindow::MSE(const cv::Mat& m1, const cv::Mat& m2) {
-    cv::Mat diff_array;
-    cv::absdiff(m1, m2, diff_array);
-    //cv::pow(diff_array, 2.0, diff_array);
-    cv::Scalar reduced_diff = cv::mean(diff_array);
-
-    //qDebug
-    //qDebug << reduced_diff;  // also doesn't work
-    return reduced_diff.val[0];
-}
 
 bool MainWindow::inrange(int val, int lower, int upper) {
     // lambdify

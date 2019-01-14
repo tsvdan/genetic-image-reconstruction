@@ -31,14 +31,14 @@ SOURCES += \
     ellipsepopulation.cpp
 
 HEADERS += \
-        mainwindow.h \
-        imshow.h \
-    displaycv.h \
-    ellipsesln.h \
-    ellipse.h \
     aelement.h \
     asolution.h \
     apopulation.h \
+    mainwindow.h \
+    imshow.h \
+    displaycv.h \
+    ellipse.h \
+    ellipsesln.h \
     ellipsepopulation.h
 
 FORMS += \

@@ -7,10 +7,7 @@
 #include <opencv2/core.hpp>
 #include <experimental/random>
 #include "ellipsepopulation.h"
-/* // Defined in ellipse, which is included in ellipsesln
-#include <array>
-#include <opencv2/opencv.hpp>
- */
+
 using std::experimental::fundamentals_v2::randint;
 
 namespace Ui {
@@ -27,17 +24,23 @@ public:
 
 public slots:
     void temp_func();
+    void test_func();
     //void ellipse_sln();
 
 private:
-// dunno, if Polevoy will be furious for no RAII (no?)
     Ui::MainWindow *ui;
-    cv::Mat original;
-    cv::Mat img;        // current iterated/displayed image
-    QImage imgq;        // used to display the images (should really be local to main()/constructor)
+    cv::Mat original_full_resolution;
+    cv::Mat original_resized;
+    cv::Mat displayed_resized;
+    cv::Mat blank_canvas;
+    cv::Mat displayed_canvas;
+    //cv::Mat img;
+    QImage imgq_right;
+    QImage imgq_left;
     //EllipsePopulation<30, 50> population;  // fuck me
+    // sort() dominates complexity (mb even .fitness())
+    EllipsePopulation<100, 50> population;
 
-    double MSE(const cv::Mat&, const cv::Mat&);
     bool inrange(int, int, int);
 };
 
